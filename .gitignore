@@ -1,7 +1,3 @@
-*/*.tar.gz
-softcenter/to_remove.txt
-tunnel
-.lconfig.json.js
-gostun/gostun-repo/
-fakehttp/fakehttp-fork
-
+rename.sh
+test.*
+*__pycache__*

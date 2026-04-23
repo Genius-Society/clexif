@@ -1,7 +1,0 @@
-#!/bin/sh
-
-export KSROOT=/koolshare
-source $KSROOT/scripts/base.sh
-
-cd /koolshare/bin
-exec skipd -d /jffs/asdb >/dev/null 2>&1
