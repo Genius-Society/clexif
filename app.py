@@ -156,4 +156,4 @@ if __name__ == "__main__":
                 flagging_mode="never",
             )
 
-    iface.launch(css="#gradio-share-link-button-0 { display: none; }")
+    iface.launch(css="#gradio-share-link-button-0 { display: none; }", ssr_mode=False)
