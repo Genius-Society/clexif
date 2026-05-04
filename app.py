@@ -1,17 +1,20 @@
 import os
 import imghdr
+import shutil
+import rarfile
+import zipfile
 import hashlib
 import exifread
 import gradio as gr
 import pandas as pd
 from PIL import Image
-from utils import clean_dir, compress, mk_dir, unzip, TMP_DIR, EN_US
+from py7zr import SevenZipFile
 
 ZH2EN = {
     "上传包含多图片的压缩包 (请确保上传完全后再提交)": "Upload compressed package with images (please ensure the package is completely uploaded before clicking submit)",
     "下载清理 EXIF 后的多图片压缩包": "Download cleaned images",
     "下载清理 EXIF 后的图片": "Download cleaned image",
-    "# 图片 EXIF 清理": "# Image EXIF Cleaner",
+    "图片 EXIF 清理": "Image EXIF Cleaner",
     "导出原格式": "Export original format",
     "单图片处理": "Process single image",
     "批量处理": "Batch processor",
@@ -19,10 +22,57 @@ ZH2EN = {
     "EXIF 列表": "EXIF list",
     "状态栏": "Status",
 }
+EN_US = os.getenv("LANG") != "zh_CN.UTF-8"
+TMP_DIR = os.path.join(os.path.dirname(__file__), "__pycache__")
 
 
 def _L(zh_txt: str):
     return ZH2EN[zh_txt] if EN_US else zh_txt
+
+
+def mk_dir(dir_path: str):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+
+def clean_dir(dir_path: str):
+    if os.path.exists(dir_path):
+        shutil.rmtree(dir_path)
+
+    os.makedirs(dir_path)
+
+
+def unzip(archive: str, extract_to: str):
+    mk_dir(extract_to)
+    if archive.endswith(".zip"):
+        with zipfile.ZipFile(archive, "r") as f:
+            f.extractall(extract_to)
+
+    elif archive.endswith(".7z"):
+        with SevenZipFile(archive, "r") as f:
+            f.extractall(extract_to)
+
+    elif archive.endswith(".rar"):
+        with rarfile.RarFile(archive, "r") as f:
+            f.extractall(extract_to)
+
+    else:
+        raise ValueError("Unsupported file type!")
+
+
+def compress(folder_path: str, zip_file: str):
+    if not os.path.exists(folder_path):  # 确保文件夹存在
+        raise ValueError(f"错误: 文件夹 '{folder_path}' 不存在")
+    # 打开 ZIP 文件，使用 'w' 模式表示写入
+    with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(folder_path):  # 遍历文件夹中的文件和子文件夹
+            for file in files:
+                file_path = os.path.join(root, file)  # 计算相对路径，保留文件夹的根目录
+                relative_path = os.path.relpath(file_path, folder_path)
+                zipf.write(
+                    file_path,
+                    arcname=os.path.join(os.path.basename(folder_path), relative_path),
+                )
 
 
 def get_exif(origin_file_path):
@@ -64,7 +114,7 @@ def find_images(dir_path: str):
 
 
 # outer funcs
-def infer(img_path: str, keep_ext: bool, cache=f"{TMP_DIR}/exif"):
+def infer(img_path: str, keep_ext: bool, cache=TMP_DIR):
     status = "Success"
     out_img = out_exif = None
     try:
@@ -82,7 +132,7 @@ def infer(img_path: str, keep_ext: bool, cache=f"{TMP_DIR}/exif"):
     return status, out_img, out_exif
 
 
-def batch_infer(imgs_zip: str, keep_ext: bool, cache=f"{TMP_DIR}/exif"):
+def batch_infer(imgs_zip: str, keep_ext: bool, cache=TMP_DIR):
     status = "Success"
     out_images = out_exifs = None
     try:
@@ -113,10 +163,9 @@ def batch_infer(imgs_zip: str, keep_ext: bool, cache=f"{TMP_DIR}/exif"):
     return status, out_images, out_exifs
 
 
-if __name__ == "__main__":
-    with gr.Blocks() as iface:
-        gr.Markdown(_L("# 图片 EXIF 清理"))
-        with gr.Tab(_L("单图片处理")):
+def main():
+    return gr.TabbedInterface(
+        [
             gr.Interface(
                 fn=infer,
                 inputs=[
@@ -133,9 +182,7 @@ if __name__ == "__main__":
                     gr.Textbox(label="EXIF", buttons=["copy"]),
                 ],
                 flagging_mode="never",
-            )
-
-        with gr.Tab(_L("批量处理")):
+            ),
             gr.Interface(
                 fn=batch_infer,
                 inputs=[
@@ -154,6 +201,12 @@ if __name__ == "__main__":
                     gr.Dataframe(label=_L("EXIF 列表")),
                 ],
                 flagging_mode="never",
-            )
+            ),
+        ],
+        tab_names=[_L("单图片处理"), _L("批量处理")],
+        title=_L("图片 EXIF 清理"),
+    )
 
-    iface.launch(css="#gradio-share-link-button-0 { display: none; }", ssr_mode=False)
+
+if __name__ == "__main__":
+    main().launch(css="#gradio-share-link-button-0 { display: none; }", ssr_mode=False)
