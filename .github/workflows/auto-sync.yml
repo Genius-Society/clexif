@@ -53,6 +53,7 @@ jobs:
         run: |
           git clone https://oauth2:$HF_TOKEN@huggingface.co/spaces/Genius-Society/gradio_tools ../hf_repo
           rm -rf ./.git
+          mkdir -p ../hf_repo/clexif
           cp -rf ./*.py ../hf_repo/clexif
           cd ../hf_repo
           if [ -n "$(git status --porcelain)" ]; then
