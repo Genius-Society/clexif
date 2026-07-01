@@ -8,7 +8,7 @@ on:
   workflow_dispatch: # 允许手动触发
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   job-on-push:
